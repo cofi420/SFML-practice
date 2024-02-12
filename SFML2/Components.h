@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Vec2.h"
-#include <SFML/Graphics.hpp>
+#include <SFML\Graphics.hpp>
 
 class CTransform
 {
@@ -51,10 +51,10 @@ public:
 class CInput
 {
 public:
-	bool up;
-	bool down;
-	bool left;
-	bool right;
+	bool up = false;
+	bool down = false;
+	bool left = false;
+	bool right = false;
 
 	CInput(){}
 };

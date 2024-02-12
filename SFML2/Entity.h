@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Components.h";
+#include "Components.h"
 #include <memory>
 #include <string>
 
@@ -12,8 +12,9 @@ class Entity
     size_t      m_id        = 0;
     std::string m_tag       = "default";
     
-    Entity(const size_t id, const std::string& tag);
 public:
+    Entity(const size_t id, const std::string& tag);
+
     std::shared_ptr<CTransform> cTransform;
     std::shared_ptr<CShape> cShape;
     std::shared_ptr<CCollision> cCollision;
@@ -22,8 +23,8 @@ public:
     std::shared_ptr<CLifespan> cLifespan;
 
     bool isActive() const;
-    const std::string & tag() const;
-    const size_t id() const;
+    const std::string & getTag() const;
+    const size_t getId() const;
     void destroy();
 
 };
