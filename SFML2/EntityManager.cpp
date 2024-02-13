@@ -15,8 +15,7 @@ void EntityManager::update()
         m_entitiesVec.push_back(a);
         m_entitiesMap[a->getTag()].push_back(a);
     }
-    //std::cout << "    start   ";
-
+    //brisanje iz vectora
     m_entitiesVec.erase(
         std::remove_if(m_entitiesVec.begin(), m_entitiesVec.end(),
             [](const std::shared_ptr<Entity>& entity) {
@@ -25,12 +24,9 @@ void EntityManager::update()
         m_entitiesVec.end()
     );
 
-    //std::cout << "  1 ";
-
+    //brisanje iz mape
     for (auto it = m_entitiesMap.begin(); it != m_entitiesMap.end(); ) {
         auto& vectorOfEntities = it->second;
-        //std::cout << "  2   ";
-
         vectorOfEntities.erase(
             std::remove_if(vectorOfEntities.begin(), vectorOfEntities.end(),
                 [](const std::shared_ptr<Entity>& entity) {

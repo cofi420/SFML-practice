@@ -1,8 +1,12 @@
 #include "Game.h"
 
+#define _USE_MATH_DEFINES
+
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <math.h>
+
 
 int randomBroj(int min, int max) 
 {
@@ -15,6 +19,7 @@ float randomBroj(float a, float b) {
     float r = random * diff;
     return a + r;
 }
+
 
 Game::Game(const std::string & config)
 {
@@ -30,6 +35,8 @@ void Game::init(const std::string & config)
     int wHeight=0, wWidth=0, wFrameLimit=60, wIsFullScreen;
     std::string fName; 
     int fSize, fR, fG, fB;
+
+
     while (in>>line)
     {
         if (line.compare("Window") == 0)
@@ -44,10 +51,11 @@ void Game::init(const std::string & config)
                std::cerr << "Font loading error";
                return;
             }
-            // sf::Text text("Test", font, fSize);
-            // text.setPosition(0, (float)text.getCharacterSize());
-            // //text.setColor(sf::Color(fR, fG, fB));
-            // text.setFillColor(sf::Color(fR, fG, fB));
+            sf::Text text("Test", m_font, fSize);
+            text.setPosition(0, (float)text.getCharacterSize());
+            text.setFillColor(sf::Color(fR, fG, fB));
+            m_text = text;
+            
         }
         else if (line.compare("Player") == 0)
         {
@@ -68,6 +76,7 @@ void Game::init(const std::string & config)
     m_window.create(sf::VideoMode(wHeight, wWidth), "A2");
     m_window.setFramerateLimit(wFrameLimit);
     
+    
     spawnPlayer();
 }
 
@@ -84,6 +93,7 @@ void Game::run()
             sMovement();
             sCollision();
             sUserInput();
+            sLifespan();
         }
         sRender();
 
@@ -109,32 +119,39 @@ void Game::sMovement()
     }
     if (m_player->cInput->up && 0 <= m_player->cTransform->pos.y - m_playerConfig.S - m_player->cCollision->radius)
     {
-		std::cout << "Move up";
+		//std::cout << "Move up";
         m_player->cTransform->velocity += Vec2(0.0, -m_playerConfig.S);
     }
     if (m_player->cInput->left && 0 <= m_player->cTransform->pos.x - m_playerConfig.S - m_player->cCollision->radius)
     {
-		std::cout << "Move left";
+		//std::cout << "Move left";
         m_player->cTransform->velocity += Vec2(-m_playerConfig.S, 0.0);
     }
 	if (m_player->cInput->down && m_window.getSize().y >= m_player->cTransform->pos.y + m_playerConfig.S + m_player->cCollision->radius)
 	{
-		std::cout << "Move down";
+		//std::cout << "Move down";
 		m_player->cTransform->velocity += Vec2(0.0, m_playerConfig.S);
 	}
     for (auto& e: m_entities.getEntities())
     {
-        
-        e->cTransform->pos += e->cTransform->velocity;
-        e->cShape->circle.setRotation(e->cShape->circle.getRotation() + 1);
-         
-        if (e->cTransform->pos.x < e->cCollision->radius  || e->cTransform->pos.x + e->cCollision->radius  > m_window.getSize().x)
+
+
+        if (e->cTransform != nullptr)
         {
-            e->cTransform->velocity.x *= -1.0;
-        }
-        if (e->cTransform->pos.y < e->cCollision->radius || e->cTransform->pos.y + e->cCollision->radius  > m_window.getSize().y)
-        {
-            e->cTransform->velocity.y *= -1.0;
+            e->cTransform->pos += e->cTransform->velocity;
+            e->cShape->circle.setRotation(e->cShape->circle.getRotation() + 1);
+
+            if (e->cCollision != nullptr && (e->getTag().compare("enemy")==0)) {
+
+                if (e->cTransform->pos.x < e->cCollision->radius || e->cTransform->pos.x + e->cCollision->radius  > m_window.getSize().x)
+                {
+                    e->cTransform->velocity.x *= -1.0;
+                }
+                if (e->cTransform->pos.y < e->cCollision->radius || e->cTransform->pos.y + e->cCollision->radius  > m_window.getSize().y)
+                {
+                    e->cTransform->velocity.y *= -1.0;
+                }
+            }
         }
     }
 }
@@ -154,17 +171,17 @@ void Game::sUserInput()
             switch (event.key.code)
             {
             case sf::Keyboard::W:
-                std::cout << "W key pressed\n";
+                //std::cout << "W key pressed\n";
                 m_player->cInput->up = true;
                 break;
 
             case sf::Keyboard::S:
-                std::cout << "S key pressed\n";
+                //std::cout << "S key pressed\n";
                 m_player->cInput->down = true;
                 break;
 
             case sf::Keyboard::A:
-                std::cout << "A key pressed\n";
+                //std::cout << "A key pressed\n";
                 m_player->cInput->left = true;
                 break;
 
@@ -207,6 +224,31 @@ void Game::sUserInput()
             {
                 spawnBullet(m_player, Vec2(event.mouseButton.x, event.mouseButton.y));
             }
+			if (event.mouseButton.button == sf::Mouse::Right)
+			{
+				spawnSpecialWeapon(m_player);
+			}
+        }
+    }
+}
+
+void Game::sLifespan()
+{
+    for (auto& e : m_entities.getEntities())
+    {
+        if(e->cLifespan != nullptr)
+        {
+            
+            if(e->cLifespan->remaining == 0)
+            {
+                m_entities.deleteEntity(e);
+                continue;
+            }
+            e->cLifespan->remaining--;
+            auto opacity = e->cShape->circle.getFillColor().a;
+            opacity -= 255/e->cLifespan->total;
+            e->cShape->circle.setFillColor(sf::Color(e->cShape->circle.getFillColor().r, e->cShape->circle.getFillColor().g, e->cShape->circle.getFillColor().b, opacity));
+			e->cShape->circle.setOutlineColor(sf::Color(e->cShape->circle.getOutlineColor().r, e->cShape->circle.getOutlineColor().g, e->cShape->circle.getOutlineColor().b, opacity));
         }
     }
 }
@@ -219,6 +261,11 @@ void Game::sRender()
         a->cShape->circle.setPosition(a->cTransform->pos.x, a->cTransform->pos.y);
         m_window.draw(a->cShape->circle);
     }
+    std::string a = "Score: " + std::to_string(m_score);
+    m_text.setString(a);
+    
+    
+    m_window.draw(m_text);
     m_window.display();
 }
 
@@ -230,21 +277,19 @@ void Game::sCollision()
         {
             float dist = b->cTransform->pos.dist(e->cTransform->pos);
             if (b->cCollision->radius + e->cCollision->radius >= dist)
-            {
-                
-                //TODO Handle Bullet Enemy collision
+            {      
                 spawnSmallEnemies(e);
                 m_entities.deleteEntity(e);
                 m_entities.deleteEntity(b);
-                m_score += e->cScore->score;
-                
+                m_score += e->cScore->score;     
             }
         }
         float dist = m_player->cTransform->pos.dist(e->cTransform->pos);
         if (m_player->cCollision->radius + e->cCollision->radius >= dist)
         {
-            //TODO Handle player enemy collision
             m_player->cTransform->pos = Vec2(m_window.getSize().x / 2, m_window.getSize().y / 2);
+            m_entities.deleteEntity(e);
+            spawnSmallEnemies(e);
         }
     }
 }
@@ -271,8 +316,24 @@ void Game::spawnEnemy()
     auto e = m_entities.addEntity("enemy");
 
     int k=randomBroj(m_enemyConfig.VMIN, m_enemyConfig.VMAX);
-    e->cTransform = std::make_shared<CTransform>(Vec2(randomBroj(m_enemyConfig.SR + 1,m_window.getSize().x - m_enemyConfig.SR - 1), randomBroj(m_enemyConfig.SR + 1, m_window.getSize().y - m_enemyConfig.SR - 1)), Vec2(randomBroj(m_enemyConfig.SMIN, m_enemyConfig.SMAX), randomBroj(m_enemyConfig.SMIN, m_enemyConfig.SMAX)) , randomBroj(0,360));
-    e->cShape = std::make_shared<CShape>(m_enemyConfig.SR,k, sf::Color(0, 0,0), sf::Color(m_enemyConfig.OR, m_enemyConfig.OG, m_enemyConfig.OB), m_enemyConfig.OT);
+    Vec2 pozicija(randomBroj(m_enemyConfig.SR + 1, m_window.getSize().x - m_enemyConfig.SR - 1), randomBroj(m_enemyConfig.SR + 1, m_window.getSize().y - m_enemyConfig.SR - 1));
+    bool preklapanje = false;
+    do
+    {
+        pozicija.x = randomBroj(m_enemyConfig.SR + 1, m_window.getSize().x - m_enemyConfig.SR - 1);
+        pozicija.y = randomBroj(m_enemyConfig.SR + 1, m_window.getSize().y - m_enemyConfig.SR - 1);
+
+        preklapanje=false;
+
+        if (m_player->cTransform->pos.dist(pozicija) - m_playerConfig.CR - m_enemyConfig.CR <= 0)
+        {
+            preklapanje = true;
+        }
+
+    } while (preklapanje);
+
+    e->cTransform = std::make_shared<CTransform>(pozicija, Vec2(randomBroj(m_enemyConfig.SMIN, m_enemyConfig.SMAX), randomBroj(m_enemyConfig.SMIN, m_enemyConfig.SMAX)) , randomBroj(0,360));
+    e->cShape = std::make_shared<CShape>(m_enemyConfig.SR,k, sf::Color(randomBroj(20,255), randomBroj(20, 255), randomBroj(20, 255)), sf::Color(m_enemyConfig.OR, m_enemyConfig.OG, m_enemyConfig.OB), m_enemyConfig.OT);
     e->cCollision = std::make_shared<CCollision>(m_enemyConfig.CR);
     e->cScore = std::make_shared<CScore>(k*100);
 
@@ -283,13 +344,18 @@ void Game::spawnSmallEnemies(std::shared_ptr<Entity> enemy)
 {
     int pointCount = enemy->cShape->circle.getPointCount();
     float angle = 0;
-    /*for (int i = 0; i < pointCount; i++)
+    for (int i = 0; i < pointCount; i++)
     {
         angle = i * (360/pointCount);
         auto e = m_entities.addEntity("small enemy");
-        Vec2 pocetak(cos(i) * enemy->cCollision->radius, sin(i) * enemy->cCollision->radius);
-        e->cTransform = std::make_shared<CTransform>(Vec2(enemy->cTransform->pos + pocetak),;
-    }*/
+        angle = angle * M_PI / 180;
+     
+        Vec2 pocetak(std::cos(angle) * enemy->cCollision->radius, std::sin(angle) * enemy->cCollision->radius);
+
+        e->cTransform = std::make_shared<CTransform>(enemy->cTransform->pos + pocetak, pocetak.norm() * enemy->cTransform->velocity.length() / 2, i);
+        e->cShape = std::make_shared<CShape>(enemy->cShape->circle.getRadius() /2, pointCount , enemy->cShape->circle.getFillColor(), enemy->cShape->circle.getOutlineColor(), enemy->cShape->circle.getOutlineThickness());
+        e->cLifespan = std::make_shared<CLifespan>(m_enemyConfig.L);
+    }
 
 }
 
@@ -305,6 +371,18 @@ void Game::spawnBullet(std::shared_ptr<Entity> e, const Vec2 & mousePos)
 }
 
 void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
-{
-    //enti
+{   
+    float angle = 0;
+    for (int i = 0; i < 10; i++)
+    {
+        angle = i * 36;
+		angle = angle * M_PI / 180;
+
+        auto bullet = m_entities.addEntity("bullet");
+		bullet->cCollision = std::make_shared<CCollision>(m_bulletConfig.CR);
+		Vec2 pocetak(std::cos(angle) * bullet->cCollision->radius, std::sin(angle) * bullet->cCollision->radius);
+		bullet->cTransform = std::make_shared<CTransform>(m_player->cTransform->pos + pocetak, pocetak.norm() * m_bulletConfig.S, angle);
+		bullet->cShape = std::make_shared<CShape>(m_playerConfig.SR/3, m_playerConfig.V, sf::Color(m_playerConfig.FR, m_playerConfig.FG, m_playerConfig.FB), sf::Color(m_playerConfig.OR, m_playerConfig.OG, m_playerConfig.OB), m_playerConfig.OT);
+		bullet->cLifespan = std::make_shared<CLifespan>(m_enemyConfig.L/3);
+    }
 }

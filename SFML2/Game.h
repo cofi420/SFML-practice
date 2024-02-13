@@ -8,6 +8,8 @@ struct BulletConfig { int SR, CR, FR, FG, FB, OR, OG, OB, OT, V, L; float S; };
 
 class Game
 {
+    
+
     sf::RenderWindow m_window;
     EntityManager m_entities;
     sf::Font m_font;
@@ -41,6 +43,8 @@ class Game
 
 public:
     Game(const std::string & config);
+
+
 
     void run();
 };
