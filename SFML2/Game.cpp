@@ -80,10 +80,10 @@ void Game::run()
 
         if (!m_paused)
         {
-        sEnemySpawner();
-        sMovement();
-        sCollision();
-        sUserInput();
+            sEnemySpawner();
+            sMovement();
+            sCollision();
+            sUserInput();
         }
         sRender();
 
@@ -124,14 +124,15 @@ void Game::sMovement()
 	}
     for (auto& e: m_entities.getEntities())
     {
+        
         e->cTransform->pos += e->cTransform->velocity;
         e->cShape->circle.setRotation(e->cShape->circle.getRotation() + 1);
          
-        if (e->cTransform->pos.x < e->cCollision->radius || e->cTransform->pos.x - e->cCollision->radius > m_window.getSize().x - e->cShape->circle.getGlobalBounds().getSize().x)
+        if (e->cTransform->pos.x < e->cCollision->radius  || e->cTransform->pos.x + e->cCollision->radius  > m_window.getSize().x)
         {
             e->cTransform->velocity.x *= -1.0;
         }
-        if (e->cTransform->pos.y < e->cCollision->radius || e->cTransform->pos.y - e->cCollision->radius> m_window.getSize().y - e->cShape->circle.getGlobalBounds().getSize().y)
+        if (e->cTransform->pos.y < e->cCollision->radius || e->cTransform->pos.y + e->cCollision->radius  > m_window.getSize().y)
         {
             e->cTransform->velocity.y *= -1.0;
         }
@@ -213,7 +214,6 @@ void Game::sUserInput()
 void Game::sRender()
 {
     m_window.clear();
-    m_entities.update();
     for (auto a : m_entities.getEntities())
     {
         a->cShape->circle.setPosition(a->cTransform->pos.x, a->cTransform->pos.y);
@@ -229,12 +229,13 @@ void Game::sCollision()
         for (auto& b: m_entities.getEntities("bullet"))
         {
             float dist = b->cTransform->pos.dist(e->cTransform->pos);
-            if (b->cCollision->radius + e->cCollision->radius <= dist)
+            if (b->cCollision->radius + e->cCollision->radius >= dist)
             {
                 
                 //TODO Handle Bullet Enemy collision
                 spawnSmallEnemies(e);
                 m_entities.deleteEntity(e);
+                m_entities.deleteEntity(b);
                 m_score += e->cScore->score;
                 
             }

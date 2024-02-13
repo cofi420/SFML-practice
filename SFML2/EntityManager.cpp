@@ -1,12 +1,10 @@
 #include "EntityManager.h"
+#include <iostream>
 
 typedef std::vector<std::shared_ptr<Entity>> EntityVecType;
 typedef std::map<std::string, EntityVecType> EntityMapType;
 
-bool forDelete(std::shared_ptr<Entity> a)
-{
-    return !a->isActive();
-}
+
 
 EntityManager::EntityManager(){}
 
@@ -17,27 +15,41 @@ void EntityManager::update()
         m_entitiesVec.push_back(a);
         m_entitiesMap[a->getTag()].push_back(a);
     }
+    //std::cout << "    start   ";
 
-    std::remove_if(m_entitiesVec.begin(), m_entitiesVec.end(), forDelete);
+    m_entitiesVec.erase(
+        std::remove_if(m_entitiesVec.begin(), m_entitiesVec.end(),
+            [](const std::shared_ptr<Entity>& entity) {
+                return !entity->isActive();
+            }),
+        m_entitiesVec.end()
+    );
+
+    //std::cout << "  1 ";
 
     for (auto it = m_entitiesMap.begin(); it != m_entitiesMap.end(); ) {
-        // Use std::remove_if to remove elements from the vector based on the condition
-        it->second.erase(
-            std::remove_if(it->second.begin(), it->second.end(),
+        auto& vectorOfEntities = it->second;
+        //std::cout << "  2   ";
+
+        vectorOfEntities.erase(
+            std::remove_if(vectorOfEntities.begin(), vectorOfEntities.end(),
                 [](const std::shared_ptr<Entity>& entity) {
                     return !entity->isActive();
                 }),
-            it->second.end()
+            vectorOfEntities.end()
         );
 
         // If the vector is empty after removal, remove the key-value pair from the map
-        if (it->second.empty()) {
+        if (vectorOfEntities.empty()) {
             it = m_entitiesMap.erase(it);
         }
         else {
             ++it;
         }
     }
+
+
+
 
 
     m_toAddEntitiesVec.clear();
