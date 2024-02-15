@@ -11,9 +11,10 @@ class Entity
     bool        m_active    = true;
     size_t      m_id        = 0;
     std::string m_tag       = "default";
+
+    Entity(const size_t id, const std::string& tag);
     
 public:
-    Entity(const size_t id, const std::string& tag);
 
     std::shared_ptr<CTransform> cTransform;
     std::shared_ptr<CShape> cShape;

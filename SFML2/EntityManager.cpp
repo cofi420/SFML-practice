@@ -53,7 +53,7 @@ void EntityManager::update()
 
 std::shared_ptr<Entity> EntityManager::addEntity(const std::string& tag)
 {
-    auto e = std::make_shared<Entity>(m_totalEntities++, tag);
+    auto e = std::shared_ptr<Entity>(new Entity(m_totalEntities++, tag));
     m_toAddEntitiesVec.push_back(e);
     return e;
 }
