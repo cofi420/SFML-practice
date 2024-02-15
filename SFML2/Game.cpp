@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <math.h>
+#include <iomanip>
 
 
 int randomBroj(int min, int max) 
@@ -52,7 +53,7 @@ void Game::init(const std::string & config)
                return;
             }
             sf::Text text("Test", m_font, fSize);
-            text.setPosition(0, (float)text.getCharacterSize());
+            text.setPosition(0, 0);
             text.setFillColor(sf::Color(fR, fG, fB));
             m_text = text;
             
@@ -94,10 +95,55 @@ void Game::run()
             sCollision();
             sUserInput();
             sLifespan();
+            sUlt();
+            sFreeze();
         }
         sRender();
 
         m_currentFrame++;
+    }
+}
+
+void Game::sUlt()
+{
+    if (m_currentFrame - m_lastUltTime >= 720 && m_player->cInput->ult == true)
+    {
+        m_ultActive = true;
+        m_lastUltTime = m_currentFrame;
+    }
+    if (m_currentFrame - m_lastUltTime >= 150 && m_ultActive == true)
+    {
+        m_ultActive = false;
+    }
+    if (m_ultActive == true && m_currentFrame - m_lastUltTick >= 10)
+    {
+        spawnSpecialWeapon();
+        m_lastUltTick = m_currentFrame;
+    }
+}
+
+void Game::sFreeze()
+{
+    if (m_currentFrame - m_lastFreezeTime >= 2100 && m_player->cInput->freeze == true)
+    {
+        std::cout << "1";
+        m_freezeActive = true;
+        m_lastFreezeTime = m_currentFrame;
+    }
+    if (m_currentFrame - m_lastFreezeTime >= 300 && m_freezeActive == true)
+    {
+        m_freezeActive = false;
+        for (auto& a : m_entities.getEntities("enemy"))
+        {
+            a->cTransform->frozen = false;
+        }
+    }
+    if (m_freezeActive == true)
+    {
+        for (auto& a : m_entities.getEntities("enemy"))
+        {
+            a->cTransform->frozen = true;
+        }
     }
 }
 
@@ -138,18 +184,20 @@ void Game::sMovement()
 
         if (e->cTransform != nullptr)
         {
-            e->cTransform->pos += e->cTransform->velocity;
-            e->cShape->circle.setRotation(e->cShape->circle.getRotation() + 1);
+            if (e->cTransform->frozen == false) {
+                e->cTransform->pos += e->cTransform->velocity;
+                e->cShape->circle.setRotation(e->cShape->circle.getRotation() + 1);
 
-            if (e->cCollision != nullptr && (e->getTag().compare("enemy")==0)) {
+                if (e->cCollision != nullptr && (e->getTag().compare("enemy") == 0)) {
 
-                if (e->cTransform->pos.x < e->cCollision->radius || e->cTransform->pos.x + e->cCollision->radius  > m_window.getSize().x)
-                {
-                    e->cTransform->velocity.x *= -1.0;
-                }
-                if (e->cTransform->pos.y < e->cCollision->radius || e->cTransform->pos.y + e->cCollision->radius  > m_window.getSize().y)
-                {
-                    e->cTransform->velocity.y *= -1.0;
+                    if (e->cTransform->pos.x < e->cCollision->radius || e->cTransform->pos.x + e->cCollision->radius  > m_window.getSize().x)
+                    {
+                        e->cTransform->velocity.x *= -1.0;
+                    }
+                    if (e->cTransform->pos.y < e->cCollision->radius || e->cTransform->pos.y + e->cCollision->radius  > m_window.getSize().y)
+                    {
+                        e->cTransform->velocity.y *= -1.0;
+                    }
                 }
             }
         }
@@ -189,6 +237,16 @@ void Game::sUserInput()
                // std::cout << "D key pressed\n";
                 m_player->cInput->right = true;
                 break;
+
+            case sf::Keyboard::E:
+                //std::cout << "E key pressed\n";
+                m_player->cInput->freeze = true;
+                break;
+
+            case sf::Keyboard::P:
+                std::cout << "P key pressed\n";
+                m_paused = true;
+                break;
             default:
                 break;
             }
@@ -213,6 +271,10 @@ void Game::sUserInput()
             case sf::Keyboard::D:
                 m_player->cInput->right = false;
                 break;
+
+            case sf::Keyboard::E:
+                m_player->cInput->freeze = false;
+                break;
             default:
                 break;
             }
@@ -226,8 +288,15 @@ void Game::sUserInput()
             }
 			if (event.mouseButton.button == sf::Mouse::Right)
 			{
-				spawnSpecialWeapon(m_player);
+                m_player->cInput->ult = true;
 			}
+        }
+        if (event.type == sf::Event::MouseButtonReleased)
+        {
+            if (event.mouseButton.button == sf::Mouse::Right)
+            {
+                m_player->cInput->ult = false;
+            }
         }
     }
 }
@@ -258,12 +327,36 @@ void Game::sRender()
     m_window.clear();
     for (auto a : m_entities.getEntities())
     {
+        
         a->cShape->circle.setPosition(a->cTransform->pos.x, a->cTransform->pos.y);
         m_window.draw(a->cShape->circle);
     }
-    std::string a = "Score: " + std::to_string(m_score);
+
+    float ultReadyIn = m_lastUltTime - m_currentFrame + 720;
+
+    if(ultReadyIn < 0)
+    {
+        ultReadyIn = 0;
+    }
+    ultReadyIn /= 60;
+
+    std::string a = "Score: " + std::to_string(m_score) + "\nUlt ready in: " + std::to_string(static_cast<int>(ultReadyIn)) +
+        "." +
+        std::to_string(static_cast<int>(ultReadyIn * 10) % 10) + " s";
+
+    ultReadyIn = m_lastFreezeTime - m_currentFrame + 2100;
+    ultReadyIn /= 60;
+
+    if (ultReadyIn < 0)
+    {
+        ultReadyIn = 0;
+    }
+
+    a+= "\nFreeze ready in: " + std::to_string(static_cast<int>(ultReadyIn)) +
+        "." +
+        std::to_string(static_cast<int>(ultReadyIn * 10) % 10) + " s";
+
     m_text.setString(a);
-    
     
     m_window.draw(m_text);
     m_window.display();
@@ -347,7 +440,7 @@ void Game::spawnSmallEnemies(std::shared_ptr<Entity> enemy)
     for (int i = 0; i < pointCount; i++)
     {
         angle = i * (360/pointCount);
-        auto e = m_entities.addEntity("small enemy");
+        auto e = m_entities.addEntity("mali");
         angle = angle * M_PI / 180;
      
         Vec2 pocetak(std::cos(angle) * enemy->cCollision->radius, std::sin(angle) * enemy->cCollision->radius);
@@ -370,7 +463,7 @@ void Game::spawnBullet(std::shared_ptr<Entity> e, const Vec2 & mousePos)
     bullet->cLifespan = std::make_shared<CLifespan>(m_bulletConfig.L);
 }
 
-void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
+void Game::spawnSpecialWeapon()
 {   
     float angle = 0;
     for (int i = 0; i < 10; i++)
@@ -383,6 +476,6 @@ void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
 		Vec2 pocetak(std::cos(angle) * bullet->cCollision->radius, std::sin(angle) * bullet->cCollision->radius);
 		bullet->cTransform = std::make_shared<CTransform>(m_player->cTransform->pos + pocetak, pocetak.norm() * m_bulletConfig.S, angle);
 		bullet->cShape = std::make_shared<CShape>(m_playerConfig.SR/3, m_playerConfig.V, sf::Color(m_playerConfig.FR, m_playerConfig.FG, m_playerConfig.FB), sf::Color(m_playerConfig.OR, m_playerConfig.OG, m_playerConfig.OB), m_playerConfig.OT);
-		bullet->cLifespan = std::make_shared<CLifespan>(m_enemyConfig.L/3);
+		bullet->cLifespan = std::make_shared<CLifespan>(m_enemyConfig.L/2);
     }
 }

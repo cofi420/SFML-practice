@@ -9,6 +9,7 @@ public:
 	Vec2 pos = { 0.0 , 0.0 };
 	Vec2 velocity = { 0.0 , 0.0 };
 	float angle;
+	bool frozen = false;
 
 	CTransform(const Vec2& p, const Vec2& b, float u): pos(p), velocity(b), angle(u) {}
 };
@@ -55,6 +56,8 @@ public:
 	bool down = false;
 	bool left = false;
 	bool right = false;
+	bool ult = false;
+	bool freeze = false;
 
 	CInput(){}
 };
